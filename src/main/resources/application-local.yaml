@@ -1,0 +1,20 @@
+---
+server:
+  port: 8081
+
+spring:
+  config:
+    activate:
+      on-profile: local
+  rabbitmq:
+    host: 127.0.0.1
+    username: rabbitmq
+    password: rabbitmq
+  data:
+    mongodb:
+      host: 127.0.0.1
+      port: 27018
+      username: symphony-groups
+      password: symphony-groups
+      database: symphony-groups
+      authentication-database: symphony-groups

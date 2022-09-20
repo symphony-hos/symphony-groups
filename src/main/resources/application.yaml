@@ -1,0 +1,277 @@
+server:
+  port: 8080
+  
+logging:
+  level:
+    root: INFO
+    "[org.springframework]": INFO
+    "[org.mongodb]": INFO
+    "[io.symphony]": DEBUG
+    "[org.springframework.cloud]": INFO
+    "[org.springframework.amqp]": INFO
+
+spring:
+  jackson:
+    serialization:
+      INDENT_OUTPUT: true
+  cloud: 
+    stream:
+      function:
+        definition: processPoint;publishCommand;publishPoint;processCommand
+      bindings:
+        processPoint-in-0:
+          destination: status
+          content-type: application/json
+        processCommand-in-0:
+          destination: command
+          content-type: application/json
+        publishCommand-out-0:
+          destination: command
+          content-type: application/json
+        publishPoint-out-0:
+          destination: status
+          content-type: application/json        
+      rabbit:
+        bindings:
+          processPoint-in-0:
+            consumer:
+              exchangeType: fanout
+          processCommand-in-0:
+            consumer:
+              exchangeType: fanout
+          publishCommand-out-0:
+            producer:
+              exchangeType: fanout      
+          publishPoint-out-0:
+            producer:
+              exchangeType: fanout           
+                    
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+        - prometheus
+  metrics:
+    export:
+      defaults:
+        enabled: false
+      prometheus:
+        enabled: true
+        
+symphony:
+  pointService:
+    scheme: http
+    host: points
+    port: 80
+    path: points
+  groups:
+  - id: house
+    labels:
+      name: House
+    selector: 
+      type: LabelSelector
+      name: area
+      operator: EQUALS
+      value: indoor
+  - id: first_floor
+    labels:
+      name: First Floor
+    selector:
+      type: LabelSelector
+      name: floor
+      operator: EQUALS
+      value: firstfloor
+  - id: office
+    labels:
+      name: Office
+    selector:
+      type: LabelSelector
+      name: room
+      operator: EQUALS
+      value: office
+  - id: all_power
+    labels:
+      name: Power
+    selector:
+      type: CompositeSelector
+      operator: AND
+      selectors:
+      - type: LabelSelector
+        name: property
+        operator: EQUALS
+        value: power
+  aggregates:
+  - id: indoor_temperature
+    type: Quantity
+    operator: MEAN
+    precision: 1
+    labels:
+      name: Indoor Temperature
+    selector:
+      type: CompositeSelector
+      operator: AND
+      selectors:
+      - type: LabelSelector
+        name: area
+        operator: EQUALS
+        value: indoor
+      - type: LabelSelector
+        name: device
+        operator: EQUALS
+        value: sensor
+      - type: LabelSelector
+        name: property
+        operator: EQUALS
+        value: temperature
+      - type: LabelSelector
+        name: room
+        operator: NOT_EQUALS
+        value: techroom
+  
+  - id: window_and_door_contacts
+    type: Contact
+    logic: ANY
+    match: OPEN
+    defaultState: CLOSED
+    labels:
+      name: Window & Door Contacts
+    selector:
+      type: CompositeSelector
+      operator: AND
+      selectors:
+      - type: LabelSelector
+        name: area
+        operator: EQUALS
+        value: indoor
+      - type: CompositeSelector
+        operator: OR
+        selectors:
+        - type: LabelSelector
+          name: device
+          operator: EQUALS
+          value: window
+        - type: LabelSelector
+          name: device
+          operator: EQUALS
+          value: door
+      - type: LabelSelector
+        name: property
+        operator: EQUALS
+        value: open    
+ 
+  - id: all_indoor_lights
+    type: Switch
+    logic: ANY
+    match: "ON"
+    defaultState: "OFF"
+    labels:
+      name: All Lights
+    selector:
+      type: CompositeSelector
+      operator: AND
+      selectors:
+      - type: LabelSelector
+        name: area
+        operator: EQUALS
+        value: indoor
+      - type: LabelSelector
+        name: device
+        operator: EQUALS
+        value: light         
+      - type: LabelSelector
+        name: property
+        operator: EQUALS
+        value: power 
+   
+  - id: office_lights
+    type: Switch
+    logic: ANY
+    match: "ON"
+    defaultState: "OFF"
+    labels:
+      name: Office Lights
+    selector:
+      type: CompositeSelector
+      operator: AND
+      selectors:
+      - type: LabelSelector
+        name: room
+        operator: EQUALS
+        value: office
+      - type: LabelSelector
+        name: device
+        operator: EQUALS
+        value: light         
+      - type: LabelSelector
+        name: property
+        operator: EQUALS
+        value: power 
+  
+  - id: firstfloor_shutter_pos
+    type: Quantity
+    operator: MEAN
+    labels:
+      name: All Shutter Positions
+    selector:
+      type: CompositeSelector
+      operator: AND
+      selectors:
+      - type: LabelSelector
+        name: floor
+        operator: EQUALS
+        value: firstfloor     
+      - type: LabelSelector
+        name: device
+        operator: EQUALS
+        value: rollershutter         
+      - type: LabelSelector
+        name: property
+        operator: EQUALS
+        value: position_abs        
+        
+  - id: average_outdoor_brightness
+    type: Quantity
+    operator: MEAN
+    labels:
+      name: Avg. Outdoor Brightness
+    selector:
+      type: CompositeSelector
+      operator: AND
+      selectors:
+      - type: LabelSelector
+        name: area
+        operator: EQUALS
+        value: outdoor     
+      - type: LabelSelector
+        name: device
+        operator: EQUALS
+        value: weather         
+      - type: LabelSelector
+        name: property
+        operator: EQUALS
+        value: brightness           
+      
+  - id: smoke_detectors
+    type: Alarm
+    logic: ANY
+    match: ALARM
+    defaultState: NO_ALARM
+    labels:
+      name: Smoke Detectors
+    selector:
+      type: CompositeSelector
+      operator: AND
+      selectors:
+      - type: LabelSelector
+        name: area
+        operator: EQUALS
+        value: indoor
+      - type: LabelSelector
+        name: device
+        operator: EQUALS
+        value: sensor         
+      - type: LabelSelector
+        name: property
+        operator: EQUALS
+        value: smoke

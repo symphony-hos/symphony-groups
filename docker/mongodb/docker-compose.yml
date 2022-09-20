@@ -1,0 +1,18 @@
+version: '2'
+
+services:
+  mongodb:
+    image: docker.io/bitnami/mongodb:4.4
+    ports:
+      - "27018:27017"
+    volumes:
+      - 'mongodb_data:/bitnami/mongodb'
+    environment:
+      - MONGODB_ROOT_PASSWORD=symphony
+      - MONGODB_USERNAME=symphony-groups
+      - MONGODB_PASSWORD=symphony-groups
+      - MONGODB_DATABASE=symphony-groups
+
+volumes:
+  mongodb_data:
+    driver: local
